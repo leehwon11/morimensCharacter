@@ -409,10 +409,8 @@ function infoRowsToHTML(){
   return infoRows.map(r => `      <tr><td>${esc(r.label)}</td><td>${esc(r.value)}</td></tr>`).join('\n');
 }
 
-const VOICE_TAG_STYLE = "display:inline-block;margin-right:0.6em;padding:0.1em 0.55em;border:1px solid currentColor;border-radius:3px;font-family:'Share Tech Mono','Courier New',monospace;font-size:0.7em;letter-spacing:0.06em;opacity:0.7;vertical-align:middle;white-space:nowrap;";
-
 function voiceTrackInnerHTML(t){
-  const tag = t.situation ? `<span style="${VOICE_TAG_STYLE}">${esc(t.situation)}</span>` : '';
+  const tag = t.situation ? `<span class="voice-tag">${esc(t.situation)}</span>` : '';
   return `${tag}${esc(t.content)}`;
 }
 
@@ -583,6 +581,7 @@ body{background:#fff; margin:0; font-family:var(--sans-kr); color:var(--ink);}
 .voice-track button{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:1px solid var(--border-strong);background:none;color:var(--ink-2);cursor:pointer;font-size:0.7rem;display:flex;align-items:center;justify-content:center;}
 .voice-track button:hover{color:var(--red);border-color:var(--red);}
 .voice-track .voice-label{color:var(--ink-2);}
+.voice-track .voice-tag{display:inline-block;margin-right:0.6em;padding:0.1em 0.55em;border:1px solid currentColor;border-radius:3px;font-family:var(--mono);font-size:0.7em;letter-spacing:0.06em;opacity:0.7;vertical-align:middle;white-space:nowrap;}
 
 .char-story-section h3{font-family:var(--serif-kr);font-size:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;margin-bottom:1rem;}
 
