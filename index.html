@@ -86,7 +86,7 @@
       <div class="meta-fields">
         <div class="field">
           <label>캐릭터 이름</label>
-          <input type="text" id="meta-name" oninput="updateMeta('name', this.value)" placeholder="가렌">
+          <input type="text" id="meta-name" oninput="updateMeta('name', this.value)">
         </div>
         <div class="field">
           <label>영역</label>
@@ -99,15 +99,15 @@
         </div>
         <div class="field">
           <label>초상화 이미지 URL (비워두면 이름 텍스트로 대체)</label>
-          <input type="text" id="meta-portraitSrc" oninput="updateMeta('portraitSrc', this.value)" placeholder="https://...">
+          <input type="text" id="meta-portraitSrc" oninput="updateMeta('portraitSrc', this.value)">
         </div>
         <div class="field">
           <label>도장(스탬프) 문구 (비워두면 표시 안 함)</label>
-          <input type="text" id="meta-stampText" oninput="updateMeta('stampText', this.value)" placeholder="보존">
+          <input type="text" id="meta-stampText" oninput="updateMeta('stampText', this.value)">
         </div>
         <div class="field">
           <label>티저 문구</label>
-          <textarea id="txt_teaser" oninput="updateMeta('teaser', this.value)" placeholder="각성 이후에도 삶의 기억을 잃지 않은 유일한 사례로..."></textarea>
+          <textarea id="txt_teaser" oninput="updateMeta('teaser', this.value)"></textarea>
         </div>
       </div>
 
@@ -193,7 +193,7 @@ function moveInfoRow(id, dir){
 }
 
 // ---------- Voice tracks ----------
-function addVoiceTrack(){ voiceTracks.push({ id:newId(), label:'', src:'' }); renderEditor(); renderPreview(); }
+function addVoiceTrack(){ voiceTracks.push({ id:newId(), situation:'', content:'', src:'' }); renderEditor(); renderPreview(); }
 function removeVoiceTrack(id){ voiceTracks = voiceTracks.filter(t=>t.id!==id); renderEditor(); renderPreview(); }
 function updateVoiceTrack(id, field, value){ const t = voiceTracks.find(t=>t.id===id); if(t){ t[field]=value; renderPreview(); } }
 
@@ -272,8 +272,8 @@ function infoRowHTML(row){
   return `
     <div class="line-item">
       <div class="line-fields">
-        <input type="text" value="${esc(row.label)}" oninput="updateInfoRow('${row.id}','label',this.value)" placeholder="항목명" style="flex:0 0 35%; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
-        <input type="text" value="${esc(row.value)}" oninput="updateInfoRow('${row.id}','value',this.value)" placeholder="내용" style="flex:1; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(row.label)}" oninput="updateInfoRow('${row.id}','label',this.value)" style="flex:0 0 35%; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(row.value)}" oninput="updateInfoRow('${row.id}','value',this.value)" style="flex:1; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
       </div>
       <button class="tiny-btn" onclick="moveInfoRow('${row.id}',-1)">↑</button>
       <button class="tiny-btn" onclick="moveInfoRow('${row.id}',1)">↓</button>
@@ -283,12 +283,25 @@ function infoRowHTML(row){
 
 function voiceTrackHTML(t){
   return `
-    <div class="line-item">
-      <div class="line-fields">
-        <input type="text" value="${esc(t.label)}" oninput="updateVoiceTrack('${t.id}','label',this.value)" placeholder="레이블 (예: 등장 대사)" style="flex:1; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
-        <input type="text" value="${esc(t.src)}" oninput="updateVoiceTrack('${t.id}','src',this.value)" placeholder="../../audio/xxx.mp3" style="flex:1; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+    <div class="block-card">
+      <div class="block-head">
+        <span class="block-type">음성 트랙</span>
+        <div class="block-actions">
+          <button onclick="removeVoiceTrack('${t.id}')" title="삭제">✕</button>
+        </div>
       </div>
-      <button class="tiny-btn" onclick="removeVoiceTrack('${t.id}')">✕</button>
+      <div class="field">
+        <label>상황</label>
+        <input type="text" value="${esc(t.situation)}" oninput="updateVoiceTrack('${t.id}','situation',this.value)" placeholder="각성 / 명령-타격 / 명령-방어 / 광기 폭발">
+      </div>
+      <div class="field">
+        <label>대사 내용</label>
+        <textarea oninput="updateVoiceTrack('${t.id}','content',this.value)">${esc(t.content)}</textarea>
+      </div>
+      <div class="field">
+        <label>음성 파일 링크 (src)</label>
+        <input type="text" value="${esc(t.src)}" oninput="updateVoiceTrack('${t.id}','src',this.value)">
+      </div>
     </div>`;
 }
 
@@ -297,7 +310,7 @@ function sectionBlockCardHTML(sectionId, b){
   const body = `
       <div class="field">
         <label>나레이션 텍스트</label>
-        <textarea id="${taId}" oninput="updateSectionBlock('${sectionId}','${b.id}','text',this.value)" placeholder="장면을 묘사하는 나레이션">${esc(b.text)}</textarea>
+        <textarea id="${taId}" oninput="updateSectionBlock('${sectionId}','${b.id}','text',this.value)">${esc(b.text)}</textarea>
       </div>`;
 
   return `
@@ -327,11 +340,11 @@ function skillCardHTML(sk, idx){
       </div>
       <div class="field">
         <label>스킬 이름 (아코디언 제목)</label>
-        <input type="text" value="${esc(sk.title)}" oninput="updateSkillTitle('${sk.id}',this.value)" placeholder="예: 은열쇠 개방">
+        <input type="text" value="${esc(sk.title)}" oninput="updateSkillTitle('${sk.id}',this.value)">
       </div>
       <div class="field">
         <label>스킬 설명</label>
-        <textarea oninput="updateSkillDescription('${sk.id}',this.value)" placeholder="스킬에 대한 설명을 적어주세요">${esc(sk.description)}</textarea>
+        <textarea oninput="updateSkillDescription('${sk.id}',this.value)">${esc(sk.description)}</textarea>
       </div>
     </div>`;
 }
@@ -340,9 +353,9 @@ function galleryImageHTML(g, idx){
   return `
     <div class="line-item">
       <div class="line-fields" style="flex-direction:column;">
-        <input type="text" value="${esc(g.thumbSrc)}" oninput="updateGalleryImage('${g.id}','thumbSrc',this.value)" placeholder="썸네일 이미지 URL (예: ../../images/characters/혼돈/가렌/thumb1.png)" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
-        <input type="text" value="${esc(g.fullSrc)}" oninput="updateGalleryImage('${g.id}','fullSrc',this.value)" placeholder="원본(확대) 이미지 URL" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
-        <input type="text" value="${esc(g.alt)}" oninput="updateGalleryImage('${g.id}','alt',this.value)" placeholder="대체 텍스트 (예: 가렌 이미지 ${idx+1})" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(g.thumbSrc)}" oninput="updateGalleryImage('${g.id}','thumbSrc',this.value)" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(g.fullSrc)}" oninput="updateGalleryImage('${g.id}','fullSrc',this.value)" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(g.alt)}" oninput="updateGalleryImage('${g.id}','alt',this.value)" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
       </div>
       <button class="tiny-btn" onclick="removeGalleryImage('${g.id}')">✕</button>
     </div>`;
@@ -361,7 +374,7 @@ function sectionCardHTML(sec, idx){
       </div>
       <div class="field">
         <label>섹션 제목</label>
-        <input type="text" value="${esc(sec.title)}" oninput="updateSectionTitle('${sec.id}',this.value)" placeholder="예: 은열쇠의 서약">
+        <input type="text" value="${esc(sec.title)}" oninput="updateSectionTitle('${sec.id}',this.value)">
       </div>
       ${sec.blocks.map(b => sectionBlockCardHTML(sec.id, b)).join('')}
       <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.5rem;">
@@ -396,11 +409,18 @@ function infoRowsToHTML(){
   return infoRows.map(r => `      <tr><td>${esc(r.label)}</td><td>${esc(r.value)}</td></tr>`).join('\n');
 }
 
+const VOICE_TAG_STYLE = "display:inline-block;margin-right:0.6em;padding:0.1em 0.55em;border:1px solid currentColor;border-radius:3px;font-family:'Share Tech Mono','Courier New',monospace;font-size:0.7em;letter-spacing:0.06em;opacity:0.7;vertical-align:middle;white-space:nowrap;";
+
+function voiceTrackInnerHTML(t){
+  const tag = t.situation ? `<span style="${VOICE_TAG_STYLE}">${esc(t.situation)}</span>` : '';
+  return `${tag}${esc(t.content)}`;
+}
+
 function voiceTracksToHTML(){
   if(voiceTracks.length === 0) return '';
   const tracks = voiceTracks.map(t => `      <div class="voice-track">
         <button data-src="${esc(t.src)}">▶</button>
-        <span class="voice-label">${esc(t.label)}</span>
+        <span class="voice-label">${voiceTrackInnerHTML(t)}</span>
       </div>`).join('\n');
   return `    <div class="voice-player">
       <div class="voice-player-title">VOICE</div>
@@ -722,7 +742,13 @@ function importJSON(event){
 
       meta = Object.assign({ name:'', realm:'chaos', portraitSrc:'', stampText:'', teaser:'' }, data.meta || {});
       infoRows = Array.isArray(data.infoRows) ? data.infoRows : [];
-      voiceTracks = Array.isArray(data.voiceTracks) ? data.voiceTracks : [];
+      // 이전 버전 호환: label 필드만 있던 음성 트랙은 content로 이관
+      voiceTracks = Array.isArray(data.voiceTracks) ? data.voiceTracks.map(t => ({
+        id: t.id || newId(),
+        situation: t.situation !== undefined ? t.situation : '',
+        content: t.content !== undefined ? t.content : (t.label || ''),
+        src: t.src || ''
+      })) : [];
       sections = Array.isArray(data.sections) ? data.sections : [];
       skills = Array.isArray(data.skills) ? data.skills : [];
       galleryImages = Array.isArray(data.galleryImages) ? data.galleryImages : [];
