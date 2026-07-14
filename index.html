@@ -91,10 +91,10 @@
         <div class="field">
           <label>영역</label>
           <select id="meta-realm" oninput="updateMeta('realm', this.value)" onchange="updateMeta('realm', this.value)">
-            <option value="혼돈">혼돈 (노랑)</option>
-            <option value="심해">심해 (파랑)</option>
-            <option value="혈육">혈육 (붉은)</option>
-            <option value="초차원">초차원 (보라)</option>
+            <option value="chaos">혼돈 (노랑)</option>
+            <option value="abyss">심해 (파랑)</option>
+            <option value="blood">혈육 (붉은)</option>
+            <option value="hyper">초차원 (보라)</option>
           </select>
         </div>
         <div class="field">
@@ -137,6 +137,14 @@
 
       <div class="section-block">
         <div class="section-block-head">
+          <h3>스킬 (아코디언)</h3>
+          <button class="tiny-btn" onclick="addSkill()">+ 스킬 추가</button>
+        </div>
+        <div id="skillsList"></div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-block-head">
           <h3>갤러리 이미지</h3>
           <button class="tiny-btn" onclick="addGalleryImage()">+ 이미지 추가</button>
         </div>
@@ -162,10 +170,11 @@
 <input type="file" id="importFileInput" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
 
 <script>
-let meta = { name:'', realm:'혼돈', portraitSrc:'', stampText:'', teaser:'' };
+let meta = { name:'', realm:'chaos', portraitSrc:'', stampText:'', teaser:'' };
 let infoRows = [];
 let voiceTracks = [];
 let sections = [];
+let skills = [];
 let galleryImages = [];
 let uid = 1;
 const newId = () => 'c' + (uid++);
@@ -225,6 +234,17 @@ function moveSectionBlock(sectionId, blockId, dir){
   renderEditor(); renderPreview();
 }
 
+function addSkill(){ skills.push({ id:newId(), title:'', description:'' }); renderEditor(); renderPreview(); }
+function removeSkill(id){ skills = skills.filter(s=>s.id!==id); renderEditor(); renderPreview(); }
+function updateSkillTitle(id, value){ const s = skills.find(s=>s.id===id); if(s){ s.title=value; renderPreview(); } }
+function updateSkillDescription(id, value){ const s = skills.find(s=>s.id===id); if(s){ s.description=value; renderPreview(); } }
+function moveSkill(id, dir){
+  const i = skills.findIndex(s=>s.id===id); const j = i+dir;
+  if(j<0 || j>=skills.length) return;
+  [skills[i], skills[j]] = [skills[j], skills[i]];
+  renderEditor(); renderPreview();
+}
+
 function addGalleryImage(){ galleryImages.push({ id:newId(), thumbSrc:'', fullSrc:'', alt:'' }); renderEditor(); renderPreview(); }
 function removeGalleryImage(id){ galleryImages = galleryImages.filter(g=>g.id!==id); renderEditor(); renderPreview(); }
 function updateGalleryImage(id, field, value){ const g = galleryImages.find(g=>g.id===id); if(g){ g[field]=value; renderPreview(); } }
@@ -237,14 +257,14 @@ function esc(s){
 function nl2br(s){ return esc(s).replace(/\n/g,'<br>'); }
 
 const REALM_OPTIONS = [
-  { key:'혼돈',   label:'혼돈',   color:'#b8923f' },
-  { key:'심해',   label:'심해',   color:'#5c7a99' },
-  { key:'혈육',   label:'혈육',   color:'#a8402f' },
-  { key:'초차원', label:'초차원', color:'#7b6a9e' },
+  { key:'chaos', label:'혼돈' },
+  { key:'abyss', label:'심해' },
+  { key:'blood', label:'혈육' },
+  { key:'hyper', label:'초차원' },
 ];
 function realmBadgeHTML(){
   const opt = REALM_OPTIONS.find(o => o.key === meta.realm) || REALM_OPTIONS[0];
-  return `    <div class="char-realm-badge" style="border-color:${opt.color}; color:${opt.color};">${esc(opt.label)}</div>`;
+  return `    <div class="char-realm-badge realm-${opt.key}">${esc(opt.label)}</div>`;
 }
 
 // ---------- Editor rendering ----------
@@ -294,6 +314,28 @@ function sectionBlockCardHTML(sectionId, b){
     </div>`;
 }
 
+function skillCardHTML(sk, idx){
+  return `
+    <div class="branch-box">
+      <div class="branch-head">
+        <strong>스킬 ${idx+1}</strong>
+        <div style="display:flex; gap:0.3rem;">
+          <button class="tiny-btn" onclick="moveSkill('${sk.id}',-1)">↑</button>
+          <button class="tiny-btn" onclick="moveSkill('${sk.id}',1)">↓</button>
+          <button class="tiny-btn" onclick="removeSkill('${sk.id}')">삭제</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>스킬 이름 (아코디언 제목)</label>
+        <input type="text" value="${esc(sk.title)}" oninput="updateSkillTitle('${sk.id}',this.value)" placeholder="예: 은열쇠 개방">
+      </div>
+      <div class="field">
+        <label>스킬 설명</label>
+        <textarea oninput="updateSkillDescription('${sk.id}',this.value)" placeholder="스킬에 대한 설명을 적어주세요">${esc(sk.description)}</textarea>
+      </div>
+    </div>`;
+}
+
 function galleryImageHTML(g, idx){
   return `
     <div class="line-item">
@@ -335,6 +377,8 @@ function renderEditor(){
     voiceTracks.map(voiceTrackHTML).join('') || '<div class="empty-hint">위 버튼으로 음성 트랙을 추가하세요.</div>';
   document.getElementById('sectionsList').innerHTML =
     sections.map((s,i) => sectionCardHTML(s,i)).join('') || '<div class="empty-hint">위 버튼으로 스토리 섹션을 추가하세요.</div>';
+  document.getElementById('skillsList').innerHTML =
+    skills.map((sk,i) => skillCardHTML(sk,i)).join('') || '<div class="empty-hint">위 버튼으로 스킬을 추가하세요.</div>';
   document.getElementById('galleryImagesList').innerHTML =
     galleryImages.map(galleryImageHTML).join('') || '<div class="empty-hint">위 버튼으로 갤러리 이미지를 추가하세요.</div>';
 }
@@ -384,6 +428,29 @@ function sectionToHTML(sec, idx){
 ${blocksHtml}
         </div></div></div>
       </div>`;
+}
+
+function skillsSectionHTML(){
+  if(skills.length === 0) return '';
+  const items = skills.map((sk, i) => {
+    const num = String(i + 1).padStart(2, '0');
+    return `      <div class="accordion-item">
+        <button class="accordion-header">
+          <span class="accordion-index">${num}</span>
+          <span class="accordion-title">${esc(sk.title)}</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-panel"><div class="accordion-panel-inner"><div class="accordion-panel-content">
+          <p class="skill-description">${nl2br(sk.description)}</p>
+        </div></div></div>
+      </div>`;
+  }).join('\n');
+  return `
+    <div class="char-skill-section">
+      <h3>스킬</h3>
+${items}
+    </div>
+`;
 }
 
 function gallerySectionHTML(){
@@ -448,7 +515,7 @@ ${voiceTracksToHTML()}    <div class="char-story-section">
       <h3>상세 스토리</h3>
 ${sectionsHtml}
     </div>
-${gallerySectionHTML()}  </div>
+${skillsSectionHTML()}${gallerySectionHTML()}  </div>
 </div>
 </body>
 </html>`;
@@ -479,6 +546,10 @@ body{background:#fff; margin:0; font-family:var(--sans-kr); color:var(--ink);}
 .char-portrait .stamp{position:absolute;bottom:1rem;right:1rem;border:2px solid var(--green);color:var(--green);font-family:var(--mono);font-size:0.6rem;letter-spacing:0.1em;padding:0.2rem 0.55rem;transform:rotate(-8deg);opacity:0.8;}
 .char-name-title{font-family:var(--serif-en);font-weight:700;font-size:2rem;color:var(--ink);margin:0 0 0.3rem;}
 .char-realm-badge{display:inline-block;font-family:var(--mono);font-size:0.65rem;letter-spacing:0.1em;padding:0.2rem 0.6rem;border:1px solid var(--red);color:var(--red);margin-bottom:1.4rem;}
+.char-realm-badge.realm-chaos{border-color:var(--gold);color:var(--gold);}
+.char-realm-badge.realm-abyss{border-color:var(--blue-muted);color:var(--blue-muted);}
+.char-realm-badge.realm-blood{border-color:var(--red);color:var(--red);}
+.char-realm-badge.realm-hyper{border-color:var(--violet);color:var(--violet);}
 .info-table{width:100%;border-collapse:collapse;margin-bottom:2rem;}
 .info-table tr{border-bottom:1px dashed var(--border);}
 .info-table td{padding:0.55rem 0.25rem;font-size:0.85rem;}
@@ -494,6 +565,11 @@ body{background:#fff; margin:0; font-family:var(--sans-kr); color:var(--ink);}
 .voice-track .voice-label{color:var(--ink-2);}
 
 .char-story-section h3{font-family:var(--serif-kr);font-size:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;margin-bottom:1rem;}
+
+/* ── 스킬 (상세 스토리와 같은 아코디언 재사용) ── */
+.char-skill-section{margin-top:2.5rem;}
+.char-skill-section h3{font-family:var(--serif-kr);font-size:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;margin-bottom:1rem;}
+.accordion-panel-content .skill-description{font-family:var(--sans-kr);font-size:0.88rem;line-height:1.8;color:var(--ink-2);margin:1rem 0;}
 
 /* 아코디언 — 실제 사이트의 정확한 스타일을 전달받지 못해 미리보기용 근사치입니다 */
 .accordion-item{border:1px solid var(--border);margin-bottom:0.6rem;background:var(--paper);}
@@ -620,7 +696,7 @@ function copyHTML(){
 
 // ---------- JSON 저장 / 불러오기 ----------
 function exportJSON(){
-  const data = JSON.stringify({ meta, infoRows, voiceTracks, sections, galleryImages }, null, 2);
+  const data = JSON.stringify({ meta, infoRows, voiceTracks, sections, skills, galleryImages }, null, 2);
   const blob = new Blob([data], { type:'application/json' });
   const url = URL.createObjectURL(blob);
   const filename = (meta.name && meta.name.trim()) ? meta.name.trim() : '무제 캐릭터';
@@ -644,10 +720,11 @@ function importJSON(event){
       const data = JSON.parse(e.target.result);
       if(!data || typeof data !== 'object') throw new Error('invalid json');
 
-      meta = Object.assign({ name:'', realm:'혼돈', portraitSrc:'', stampText:'', teaser:'' }, data.meta || {});
+      meta = Object.assign({ name:'', realm:'chaos', portraitSrc:'', stampText:'', teaser:'' }, data.meta || {});
       infoRows = Array.isArray(data.infoRows) ? data.infoRows : [];
       voiceTracks = Array.isArray(data.voiceTracks) ? data.voiceTracks : [];
       sections = Array.isArray(data.sections) ? data.sections : [];
+      skills = Array.isArray(data.skills) ? data.skills : [];
       galleryImages = Array.isArray(data.galleryImages) ? data.galleryImages : [];
 
       let maxNum = 0;
@@ -663,11 +740,11 @@ function importJSON(event){
           });
         }
       };
-      infoRows.forEach(scan); voiceTracks.forEach(scan); sections.forEach(scan); galleryImages.forEach(scan);
+      infoRows.forEach(scan); voiceTracks.forEach(scan); sections.forEach(scan); skills.forEach(scan); galleryImages.forEach(scan);
       uid = maxNum + 1;
 
       document.getElementById('meta-name').value = meta.name || '';
-      document.getElementById('meta-realm').value = meta.realm || '혼돈';
+      document.getElementById('meta-realm').value = meta.realm || 'chaos';
       document.getElementById('meta-portraitSrc').value = meta.portraitSrc || '';
       document.getElementById('meta-stampText').value = meta.stampText || '';
       document.getElementById('txt_teaser').value = meta.teaser || '';
