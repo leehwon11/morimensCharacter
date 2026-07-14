@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>캐릭터 빌더</title>
+<style>
+  :root{
+    --ui-bg:#faf9f6; --ui-panel:#ffffff; --ui-border:#e2ddd2; --ui-border-strong:#cfc8b8;
+    --ui-ink:#26231d; --ui-ink-2:#5a5548; --ui-ink-3:#8b8575; --ui-accent:#a8402f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--ui-bg);color:var(--ui-ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+
+  .app-row{display:flex; height:100vh;}
+
+  .editor-pane{width:46%; min-width:360px; border-right:1px solid var(--ui-border);
+    display:flex; flex-direction:column; background:var(--ui-panel);}
+  .preview-pane{flex:1; display:flex; flex-direction:column; background:var(--ui-bg);}
+
+  .pane-header{padding:0.9rem 1.25rem; border-bottom:1px solid var(--ui-border);
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;}
+  .pane-header h2{font-size:0.95rem; margin:0; letter-spacing:0.02em;}
+  .pane-body{flex:1; overflow-y:auto; padding:1.25rem;}
+
+  .meta-fields{display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.5rem;
+    padding-bottom:1.25rem; border-bottom:1px dashed var(--ui-border);}
+  .field label{display:block; font-size:0.72rem; color:var(--ui-ink-3); margin-bottom:0.25rem; letter-spacing:0.03em;}
+  .field input, .field textarea, .field select{width:100%; padding:0.5rem 0.6rem; border:1px solid var(--ui-border-strong);
+    border-radius:4px; font-size:0.85rem; font-family:inherit; background:#fff; color:var(--ui-ink);}
+  .field textarea{resize:vertical; min-height:2.2rem; line-height:1.5;}
+
+  .section-block{margin-bottom:1.75rem; padding-bottom:1.5rem; border-bottom:1px dashed var(--ui-border);}
+  .section-block:last-child{border-bottom:none;}
+  .section-block-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;}
+  .section-block-head h3{font-size:0.85rem; margin:0; color:var(--ui-ink-2); letter-spacing:0.02em;}
+
+  .block-card{border:1px solid var(--ui-border); border-radius:6px; padding:0.85rem 0.9rem;
+    margin-bottom:0.9rem; background:#fffdf9; position:relative;}
+  .block-card .block-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem;}
+  .block-card .block-type{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ui-accent); font-weight:600;}
+  .block-card .block-actions{display:flex; gap:0.3rem;}
+  .block-card .block-actions button{border:none; background:none; cursor:pointer; color:var(--ui-ink-3);
+    font-size:0.85rem; padding:0.15rem 0.35rem; border-radius:3px;}
+  .block-card .block-actions button:hover{background:var(--ui-border); color:var(--ui-ink);}
+  .block-card .field{margin-bottom:0.5rem;}
+  .block-card .field:last-child{margin-bottom:0;}
+
+  .inner-toggle{display:flex; align-items:center; gap:0.4rem; font-size:0.78rem; color:var(--ui-ink-2); margin-top:0.3rem;}
+
+  .branch-box{border:1px solid var(--ui-border); border-radius:5px; padding:0.7rem; margin-top:0.6rem; background:#faf8f3;}
+  .branch-box .branch-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;}
+  .branch-box .branch-head strong{font-size:0.78rem; color:var(--ui-ink-2);}
+
+  .line-item{display:flex; gap:0.4rem; align-items:flex-start; margin-bottom:0.4rem; padding:0.5rem; background:#fff; border:1px solid var(--ui-border); border-radius:4px;}
+  .line-item .line-fields{flex:1; display:flex; gap:0.3rem;}
+
+  .tiny-btn{border:1px solid var(--ui-border-strong); background:#fff; font-size:0.7rem; padding:0.25rem 0.5rem;
+    border-radius:4px; cursor:pointer; color:var(--ui-ink-2);}
+  .tiny-btn:hover{background:var(--ui-ink); color:#fff;}
+
+  .empty-hint{color:var(--ui-ink-3); font-size:0.8rem; text-align:center; padding:1rem; border:1px dashed var(--ui-border); border-radius:6px;}
+
+  #copyBtn{background:var(--ui-accent); color:#fff; border:none; padding:0.5rem 1rem; border-radius:5px;
+    font-size:0.82rem; cursor:pointer; font-weight:600; letter-spacing:0.01em;}
+  #copyBtn:hover{opacity:0.9;}
+  #copyStatus{font-size:0.76rem; color:#3b7a4a; margin-left:0.6rem;}
+
+  iframe{flex:1; width:100%; border:none; background:#fff;}
+</style>
+</head>
+<body>
+
+<div class="app-row">
+
+  <div class="editor-pane">
+    <div class="pane-header">
+      <h2>✎ 캐릭터 편집</h2>
+      <div style="display:flex; gap:0.4rem;">
+        <button class="tiny-btn" onclick="triggerImport()">📥 가져오기</button>
+        <button class="tiny-btn" onclick="exportJSON()">📤 내보내기</button>
+      </div>
+    </div>
+    <div class="pane-body">
+
+      <div class="meta-fields">
+        <div class="field">
+          <label>캐릭터 이름</label>
+          <input type="text" id="meta-name" oninput="updateMeta('name', this.value)" placeholder="가렌">
+        </div>
+        <div class="field">
+          <label>영역</label>
+          <select id="meta-realm" oninput="updateMeta('realm', this.value)" onchange="updateMeta('realm', this.value)">
+            <option value="혼돈">혼돈 (노랑)</option>
+            <option value="심해">심해 (파랑)</option>
+            <option value="혈육">혈육 (붉은)</option>
+            <option value="초차원">초차원 (보라)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>초상화 이미지 URL (비워두면 이름 텍스트로 대체)</label>
+          <input type="text" id="meta-portraitSrc" oninput="updateMeta('portraitSrc', this.value)" placeholder="https://...">
+        </div>
+        <div class="field">
+          <label>도장(스탬프) 문구 (비워두면 표시 안 함)</label>
+          <input type="text" id="meta-stampText" oninput="updateMeta('stampText', this.value)" placeholder="보존">
+        </div>
+        <div class="field">
+          <label>티저 문구</label>
+          <textarea id="txt_teaser" oninput="updateMeta('teaser', this.value)" placeholder="각성 이후에도 삶의 기억을 잃지 않은 유일한 사례로..."></textarea>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-block-head">
+          <h3>정보표</h3>
+          <button class="tiny-btn" onclick="addInfoRow()">+ 행 추가</button>
+        </div>
+        <div id="infoRowsList"></div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-block-head">
+          <h3>음성 트랙</h3>
+          <button class="tiny-btn" onclick="addVoiceTrack()">+ 트랙 추가</button>
+        </div>
+        <div id="voiceTracksList"></div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-block-head">
+          <h3>상세 스토리 섹션 (아코디언)</h3>
+          <button class="tiny-btn" onclick="addSection()">+ 섹션 추가</button>
+        </div>
+        <div id="sectionsList"></div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-block-head">
+          <h3>갤러리 이미지</h3>
+          <button class="tiny-btn" onclick="addGalleryImage()">+ 이미지 추가</button>
+        </div>
+        <div id="galleryImagesList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="preview-pane">
+    <div class="pane-header">
+      <h2>👁 실시간 미리보기</h2>
+      <div>
+        <button id="copyBtn" onclick="copyHTML()">📋 HTML 복사</button>
+        <span id="copyStatus"></span>
+      </div>
+    </div>
+    <iframe id="previewFrame"></iframe>
+  </div>
+
+</div>
+
+<input type="file" id="importFileInput" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
+
+<script>
+let meta = { name:'', realm:'혼돈', portraitSrc:'', stampText:'', teaser:'' };
+let infoRows = [];
+let voiceTracks = [];
+let sections = [];
+let galleryImages = [];
+let uid = 1;
+const newId = () => 'c' + (uid++);
+
+function updateMeta(field, value){ meta[field] = value; renderPreview(); }
+
+// ---------- Info rows ----------
+function addInfoRow(){ infoRows.push({ id:newId(), label:'', value:'' }); renderEditor(); renderPreview(); }
+function removeInfoRow(id){ infoRows = infoRows.filter(r => r.id !== id); renderEditor(); renderPreview(); }
+function updateInfoRow(id, field, value){ const r = infoRows.find(r=>r.id===id); if(r){ r[field]=value; renderPreview(); } }
+function moveInfoRow(id, dir){
+  const i = infoRows.findIndex(r=>r.id===id); const j = i+dir;
+  if(j<0 || j>=infoRows.length) return;
+  [infoRows[i], infoRows[j]] = [infoRows[j], infoRows[i]];
+  renderEditor(); renderPreview();
+}
+
+// ---------- Voice tracks ----------
+function addVoiceTrack(){ voiceTracks.push({ id:newId(), label:'', src:'' }); renderEditor(); renderPreview(); }
+function removeVoiceTrack(id){ voiceTracks = voiceTracks.filter(t=>t.id!==id); renderEditor(); renderPreview(); }
+function updateVoiceTrack(id, field, value){ const t = voiceTracks.find(t=>t.id===id); if(t){ t[field]=value; renderPreview(); } }
+
+// ---------- Sections (accordion) ----------
+function makeBlock(){
+  return { id:newId(), type:'narration', text:'' };
+}
+function addSection(){ sections.push({ id:newId(), title:'', blocks:[ makeBlock() ] }); renderEditor(); renderPreview(); }
+function removeSection(id){ sections = sections.filter(s=>s.id!==id); renderEditor(); renderPreview(); }
+function updateSectionTitle(id, value){ const s = sections.find(s=>s.id===id); if(s){ s.title=value; renderPreview(); } }
+function moveSection(id, dir){
+  const i = sections.findIndex(s=>s.id===id); const j = i+dir;
+  if(j<0 || j>=sections.length) return;
+  [sections[i], sections[j]] = [sections[j], sections[i]];
+  renderEditor(); renderPreview();
+}
+
+function addSectionBlock(sectionId){
+  const s = sections.find(s=>s.id===sectionId);
+  s.blocks.push(makeBlock());
+  renderEditor(); renderPreview();
+}
+function removeSectionBlock(sectionId, blockId){
+  const s = sections.find(s=>s.id===sectionId);
+  s.blocks = s.blocks.filter(b=>b.id!==blockId);
+  renderEditor(); renderPreview();
+}
+function updateSectionBlock(sectionId, blockId, field, value){
+  const s = sections.find(s=>s.id===sectionId);
+  const b = s.blocks.find(b=>b.id===blockId);
+  if(b){ b[field]=value; renderPreview(); }
+}
+function moveSectionBlock(sectionId, blockId, dir){
+  const s = sections.find(s=>s.id===sectionId);
+  const i = s.blocks.findIndex(b=>b.id===blockId); const j = i+dir;
+  if(j<0 || j>=s.blocks.length) return;
+  [s.blocks[i], s.blocks[j]] = [s.blocks[j], s.blocks[i]];
+  renderEditor(); renderPreview();
+}
+
+function addGalleryImage(){ galleryImages.push({ id:newId(), thumbSrc:'', fullSrc:'', alt:'' }); renderEditor(); renderPreview(); }
+function removeGalleryImage(id){ galleryImages = galleryImages.filter(g=>g.id!==id); renderEditor(); renderPreview(); }
+function updateGalleryImage(id, field, value){ const g = galleryImages.find(g=>g.id===id); if(g){ g[field]=value; renderPreview(); } }
+
+// ---------- esc / line breaks (no bold/color formatting needed for the character wiki) ----------
+function esc(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function nl2br(s){ return esc(s).replace(/\n/g,'<br>'); }
+
+const REALM_OPTIONS = [
+  { key:'혼돈',   label:'혼돈',   color:'#b8923f' },
+  { key:'심해',   label:'심해',   color:'#5c7a99' },
+  { key:'혈육',   label:'혈육',   color:'#a8402f' },
+  { key:'초차원', label:'초차원', color:'#7b6a9e' },
+];
+function realmBadgeHTML(){
+  const opt = REALM_OPTIONS.find(o => o.key === meta.realm) || REALM_OPTIONS[0];
+  return `    <div class="char-realm-badge" style="border-color:${opt.color}; color:${opt.color};">${esc(opt.label)}</div>`;
+}
+
+// ---------- Editor rendering ----------
+function infoRowHTML(row){
+  return `
+    <div class="line-item">
+      <div class="line-fields">
+        <input type="text" value="${esc(row.label)}" oninput="updateInfoRow('${row.id}','label',this.value)" placeholder="항목명" style="flex:0 0 35%; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(row.value)}" oninput="updateInfoRow('${row.id}','value',this.value)" placeholder="내용" style="flex:1; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+      </div>
+      <button class="tiny-btn" onclick="moveInfoRow('${row.id}',-1)">↑</button>
+      <button class="tiny-btn" onclick="moveInfoRow('${row.id}',1)">↓</button>
+      <button class="tiny-btn" onclick="removeInfoRow('${row.id}')">✕</button>
+    </div>`;
+}
+
+function voiceTrackHTML(t){
+  return `
+    <div class="line-item">
+      <div class="line-fields">
+        <input type="text" value="${esc(t.label)}" oninput="updateVoiceTrack('${t.id}','label',this.value)" placeholder="레이블 (예: 등장 대사)" style="flex:1; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(t.src)}" oninput="updateVoiceTrack('${t.id}','src',this.value)" placeholder="../../audio/xxx.mp3" style="flex:1; font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+      </div>
+      <button class="tiny-btn" onclick="removeVoiceTrack('${t.id}')">✕</button>
+    </div>`;
+}
+
+function sectionBlockCardHTML(sectionId, b){
+  const taId = 'txt_' + sectionId + '_' + b.id;
+  const body = `
+      <div class="field">
+        <label>나레이션 텍스트</label>
+        <textarea id="${taId}" oninput="updateSectionBlock('${sectionId}','${b.id}','text',this.value)" placeholder="장면을 묘사하는 나레이션">${esc(b.text)}</textarea>
+      </div>`;
+
+  return `
+    <div class="block-card">
+      <div class="block-head">
+        <span class="block-type">나레이션</span>
+        <div class="block-actions">
+          <button onclick="moveSectionBlock('${sectionId}','${b.id}',-1)" title="위로">↑</button>
+          <button onclick="moveSectionBlock('${sectionId}','${b.id}',1)" title="아래로">↓</button>
+          <button onclick="removeSectionBlock('${sectionId}','${b.id}')" title="삭제">✕</button>
+        </div>
+      </div>
+      ${body}
+    </div>`;
+}
+
+function galleryImageHTML(g, idx){
+  return `
+    <div class="line-item">
+      <div class="line-fields" style="flex-direction:column;">
+        <input type="text" value="${esc(g.thumbSrc)}" oninput="updateGalleryImage('${g.id}','thumbSrc',this.value)" placeholder="썸네일 이미지 URL (예: ../../images/characters/혼돈/가렌/thumb1.png)" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(g.fullSrc)}" oninput="updateGalleryImage('${g.id}','fullSrc',this.value)" placeholder="원본(확대) 이미지 URL" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+        <input type="text" value="${esc(g.alt)}" oninput="updateGalleryImage('${g.id}','alt',this.value)" placeholder="대체 텍스트 (예: 가렌 이미지 ${idx+1})" style="font-size:0.82rem; padding:0.35rem; border:1px solid var(--ui-border-strong); border-radius:4px;">
+      </div>
+      <button class="tiny-btn" onclick="removeGalleryImage('${g.id}')">✕</button>
+    </div>`;
+}
+
+function sectionCardHTML(sec, idx){
+  return `
+    <div class="branch-box">
+      <div class="branch-head">
+        <strong>스토리 섹션 ${idx+1}</strong>
+        <div style="display:flex; gap:0.3rem;">
+          <button class="tiny-btn" onclick="moveSection('${sec.id}',-1)">↑</button>
+          <button class="tiny-btn" onclick="moveSection('${sec.id}',1)">↓</button>
+          <button class="tiny-btn" onclick="removeSection('${sec.id}')">섹션 삭제</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>섹션 제목</label>
+        <input type="text" value="${esc(sec.title)}" oninput="updateSectionTitle('${sec.id}',this.value)" placeholder="예: 은열쇠의 서약">
+      </div>
+      ${sec.blocks.map(b => sectionBlockCardHTML(sec.id, b)).join('')}
+      <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.5rem;">
+        <button class="tiny-btn" onclick="addSectionBlock('${sec.id}')">+ 나레이션</button>
+      </div>
+    </div>`;
+}
+
+function renderEditor(){
+  document.getElementById('infoRowsList').innerHTML =
+    infoRows.map(infoRowHTML).join('') || '<div class="empty-hint">위 버튼으로 정보표 행을 추가하세요.</div>';
+  document.getElementById('voiceTracksList').innerHTML =
+    voiceTracks.map(voiceTrackHTML).join('') || '<div class="empty-hint">위 버튼으로 음성 트랙을 추가하세요.</div>';
+  document.getElementById('sectionsList').innerHTML =
+    sections.map((s,i) => sectionCardHTML(s,i)).join('') || '<div class="empty-hint">위 버튼으로 스토리 섹션을 추가하세요.</div>';
+  document.getElementById('galleryImagesList').innerHTML =
+    galleryImages.map(galleryImageHTML).join('') || '<div class="empty-hint">위 버튼으로 갤러리 이미지를 추가하세요.</div>';
+}
+
+// ---------- Character page HTML generation ----------
+function portraitHTML(){
+  const inner = meta.portraitSrc
+    ? `<img src="${esc(meta.portraitSrc)}" alt="${esc(meta.name)}">`
+    : esc(meta.name);
+  const stamp = meta.stampText ? `\n    <span class="stamp">${esc(meta.stampText)}</span>` : '';
+  return `  <div class="char-portrait">\n    ${inner}${stamp}\n  </div>`;
+}
+
+function infoRowsToHTML(){
+  return infoRows.map(r => `      <tr><td>${esc(r.label)}</td><td>${esc(r.value)}</td></tr>`).join('\n');
+}
+
+function voiceTracksToHTML(){
+  if(voiceTracks.length === 0) return '';
+  const tracks = voiceTracks.map(t => `      <div class="voice-track">
+        <button data-src="${esc(t.src)}">▶</button>
+        <span class="voice-label">${esc(t.label)}</span>
+      </div>`).join('\n');
+  return `    <div class="voice-player">
+      <div class="voice-player-title">VOICE</div>
+${tracks}
+      <audio class="voice-audio-el"></audio>
+    </div>
+
+`;
+}
+
+function sectionBlockToHTML(b){
+  return `          <p class="narration">${nl2br(b.text)}</p>`;
+}
+
+function sectionToHTML(sec, idx){
+  const num = String(idx + 1).padStart(2, '0');
+  const blocksHtml = sec.blocks.map(sectionBlockToHTML).join('\n');
+  return `      <div class="accordion-item">
+        <button class="accordion-header">
+          <span class="accordion-index">${num}</span>
+          <span class="accordion-title">${esc(sec.title)}</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-panel"><div class="accordion-panel-inner"><div class="accordion-panel-content">
+${blocksHtml}
+        </div></div></div>
+      </div>`;
+}
+
+function gallerySectionHTML(){
+  if(galleryImages.length === 0) return '';
+  const frames = galleryImages.map((g, i) => `    <button class="gallery-frame" data-full="${esc(g.fullSrc)}">
+      <img src="${esc(g.thumbSrc)}" alt="${esc(g.alt || (meta.name + ' 이미지 ' + (i + 1)))}">
+    </button>`).join('\n');
+  return `
+    <div class="char-gallery-section">
+      <h3>갤러리</h3>
+      <div class="char-gallery">
+${frames}
+      </div>
+    </div>
+
+    <!-- 모달: char-detail 바깥, </body> 바로 위에 딱 한 번만 넣으면 됨 -->
+    <div class="gallery-modal" id="galleryModal">
+      <button class="gallery-modal-close" aria-label="닫기">×</button>
+      <img class="gallery-modal-img" alt="">
+    </div>
+`;
+}
+
+function buildCharacterHTML(){
+  const sectionsHtml = sections.map((s, i) => sectionToHTML(s, i)).join('\n');
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(meta.name) || '[캐릭터명]'} — 망각전야</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&family=Share+Tech+Mono&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../character.css">
+<link rel="stylesheet" href="../../story.css">
+</head>
+<body>
+<div class="grain-overlay"></div>
+
+<div class="breadcrumb">
+  <a href="#/characters">각성체</a>
+  <span class="sep">/</span>
+  <span class="current">${esc(meta.name)}</span>
+</div>
+
+<div class="char-detail">
+${portraitHTML()}
+
+  <div class="char-dossier">
+    <h1 class="char-name-title">${esc(meta.name)}</h1>
+${realmBadgeHTML()}
+
+    <table class="info-table">
+${infoRowsToHTML()}
+    </table>
+
+    <p class="char-teaser">
+      ${nl2br(meta.teaser)}
+    </p>
+
+${voiceTracksToHTML()}    <div class="char-story-section">
+      <h3>상세 스토리</h3>
+${sectionsHtml}
+    </div>
+${gallerySectionHTML()}  </div>
+</div>
+</body>
+</html>`;
+}
+
+// ---------- Preview ----------
+const PREVIEW_CSS = `
+:root{
+  --serif-en:'Playfair Display','Georgia',serif;
+  --serif-kr:'Noto Serif KR','Nanum Myeongjo',serif;
+  --sans-kr:'Noto Sans KR',sans-serif;
+  --mono:'Share Tech Mono','Courier New',monospace;
+  --ink:#26231d; --ink-2:#5a5548; --ink-3:#8b8575;
+  --paper:#ffffff; --paper-2:#f4f1ea;
+  --border:#e2ddd2; --border-strong:#cfc8b8;
+  --red:#a8402f; --gold:#b8923f; --violet:#7b6a9e; --green:#4f8f6a;
+  --teal-muted:#4f8f8a; --blue-muted:#5c7a99; --orange:#c17a3d;
+}
+body{background:#fff; margin:0; font-family:var(--sans-kr); color:var(--ink);}
+.breadcrumb{max-width:800px;margin:0 auto;padding:1.5rem 1.5rem 0;font-family:var(--mono);font-size:0.7rem;color:var(--ink-3);}
+.breadcrumb a{color:var(--ink-3); text-decoration:none;}
+.breadcrumb .sep{margin:0 0.4rem;}
+.breadcrumb .current{color:var(--ink);}
+
+.char-detail{max-width:800px;margin:0 auto;padding:2rem 1.5rem 6rem;display:grid;grid-template-columns:260px 1fr;gap:2.75rem;}
+.char-portrait{position:relative;background:var(--paper-2);border:1px solid var(--border-strong);aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;color:var(--border-strong);font-family:var(--serif-en);overflow:hidden;text-align:center;padding:1rem;}
+.char-portrait img{width:100%;height:100%;object-fit:cover;}
+.char-portrait .stamp{position:absolute;bottom:1rem;right:1rem;border:2px solid var(--green);color:var(--green);font-family:var(--mono);font-size:0.6rem;letter-spacing:0.1em;padding:0.2rem 0.55rem;transform:rotate(-8deg);opacity:0.8;}
+.char-name-title{font-family:var(--serif-en);font-weight:700;font-size:2rem;color:var(--ink);margin:0 0 0.3rem;}
+.char-realm-badge{display:inline-block;font-family:var(--mono);font-size:0.65rem;letter-spacing:0.1em;padding:0.2rem 0.6rem;border:1px solid var(--red);color:var(--red);margin-bottom:1.4rem;}
+.info-table{width:100%;border-collapse:collapse;margin-bottom:2rem;}
+.info-table tr{border-bottom:1px dashed var(--border);}
+.info-table td{padding:0.55rem 0.25rem;font-size:0.85rem;}
+.info-table td:first-child{color:var(--ink-3);width:35%;font-family:var(--mono);font-size:0.7rem;letter-spacing:0.05em;}
+.char-teaser{font-family:var(--serif-kr);font-style:italic;color:var(--ink-2);line-height:1.85;margin:0 0 2.25rem;}
+
+.voice-player{background:var(--paper-2);border:1px solid var(--border);padding:1.25rem;margin-bottom:2.25rem;}
+.voice-player-title{font-family:var(--mono);font-size:0.65rem;letter-spacing:0.15em;color:var(--ink-3);margin-bottom:0.75rem;}
+.voice-track{display:flex;align-items:center;gap:0.85rem;padding:0.55rem 0;border-bottom:1px dashed var(--border);font-size:0.82rem;}
+.voice-track:last-child{border-bottom:none;}
+.voice-track button{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:1px solid var(--border-strong);background:none;color:var(--ink-2);cursor:pointer;font-size:0.7rem;display:flex;align-items:center;justify-content:center;}
+.voice-track button:hover{color:var(--red);border-color:var(--red);}
+.voice-track .voice-label{color:var(--ink-2);}
+
+.char-story-section h3{font-family:var(--serif-kr);font-size:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;margin-bottom:1rem;}
+
+/* 아코디언 — 실제 사이트의 정확한 스타일을 전달받지 못해 미리보기용 근사치입니다 */
+.accordion-item{border:1px solid var(--border);margin-bottom:0.6rem;background:var(--paper);}
+.accordion-header{width:100%;display:flex;align-items:center;gap:0.75rem;background:none;border:none;padding:0.85rem 1rem;cursor:pointer;text-align:left;font-family:var(--serif-kr);font-size:0.88rem;color:var(--ink);}
+.accordion-index{font-family:var(--mono);font-size:0.7rem;color:var(--ink-3);}
+.accordion-title{flex:1;}
+.accordion-icon{color:var(--ink-3);font-family:var(--serif-en); transition:transform .2s;}
+.accordion-panel{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+.accordion-item.open .accordion-panel{max-height:3000px;}
+.accordion-item.open .accordion-icon{transform:rotate(45deg);}
+.accordion-panel-inner{padding:0 1rem 1.1rem;}
+.accordion-panel-content .narration{font-size:0.88rem;margin:1rem 0;}
+.accordion-panel-content .dialogue{margin:0.9rem 0;}
+.accordion-panel-content .dialogue .line{font-size:0.9rem;}
+.accordion-panel-content .scene-divider{margin:1.75rem 0;}
+.accordion-panel-content .scene-divider span{font-size:0.7rem;}
+
+.narration{font-family:var(--serif-kr);font-style:italic;color:var(--ink-3);line-height:2;margin:1.5rem 0;}
+.dialogue{display:flex;gap:1rem;margin:1.25rem 0;padding-left:1rem;border-left:2px solid var(--border-strong);}
+.dialogue .speaker{flex-shrink:0;width:74px;font-family:var(--mono);font-size:0.72rem;letter-spacing:0.05em;color:var(--red);padding-top:0.2rem;}
+.dialogue .line{font-family:var(--serif-kr);color:var(--ink);line-height:1.9;}
+.dialogue.inner{border-left-color:var(--border);}
+.dialogue.inner .speaker{color:var(--ink-3);}
+.dialogue.inner .line{color:var(--ink-2);}
+.scene-image{margin:2.75rem 0;text-align:center;}
+.scene-image img{max-width:100%;border:6px solid var(--paper-2);outline:1px solid var(--border-strong);box-shadow:0 6px 20px rgba(0,0,0,0.15);}
+.scene-image .caption{margin-top:0.6rem;font-family:var(--mono);font-size:0.68rem;letter-spacing:0.05em;color:var(--ink-3);}
+.scene-divider{display:flex;align-items:center;gap:1rem;margin:3.25rem 0;color:var(--border-strong);}
+.scene-divider::before,.scene-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.scene-divider span{font-size:0.85rem;letter-spacing:0.4em;}
+
+/* ── 캐릭터 갤러리 ── */
+.char-gallery-section{margin-top:2.5rem;}
+.char-gallery-section h3{font-family:var(--serif-kr);font-size:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;margin-bottom:1.25rem;}
+.char-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;}
+.gallery-frame{position:relative;display:block;width:100%;padding:0;border:none;background:none;cursor:pointer;}
+.gallery-frame img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;border:6px solid var(--paper-2);outline:1px solid var(--border-strong);box-shadow:0 6px 20px rgba(0,0,0,0.15);transition:transform .3s ease, box-shadow .3s ease;}
+.gallery-frame:hover img{transform:translateY(-4px);box-shadow:0 10px 26px rgba(0,0,0,0.2);}
+.gallery-frame::after{content:'⤢';position:absolute;top:0.65rem;right:0.65rem;width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--paper);border:1px solid var(--border-strong);color:var(--ink-2);font-size:0.8rem;opacity:0;transition:opacity .25s;}
+.gallery-frame:hover::after{opacity:0.9;}
+
+/* ── 갤러리 모달 ── */
+.gallery-modal{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;background:rgba(20,16,10,0.82);padding:3rem;}
+.gallery-modal.open{display:flex;}
+.gallery-modal-img{max-width:min(90vw,900px);max-height:85vh;border:8px solid var(--paper-2);outline:1px solid var(--border-strong);box-shadow:0 20px 60px rgba(0,0,0,0.4);}
+.gallery-modal-close{position:absolute;top:1.5rem;right:2rem;width:40px;height:40px;border-radius:50%;background:var(--paper);border:1px solid var(--border-strong);color:var(--ink);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.gallery-modal-close:hover{color:var(--red);border-color:var(--red);}
+
+@media (max-width:700px){.char-detail{grid-template-columns:1fr;} .char-portrait{max-width:240px;margin:0 auto;}}
+@media (max-width:500px){.char-gallery{gap:0.85rem;} .gallery-modal{padding:1.25rem;}}
+`;
+
+const PREVIEW_SCRIPT = `
+document.querySelectorAll('.accordion-header').forEach(function(h){
+  h.addEventListener('click', function(){ h.closest('.accordion-item').classList.toggle('open'); });
+});
+var audioEl = document.querySelector('.voice-audio-el');
+var buttons = document.querySelectorAll('.voice-track button');
+if(audioEl){
+  buttons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var src = btn.dataset.src;
+      var same = audioEl.src.endsWith(src);
+      if(same && !audioEl.paused){ audioEl.pause(); btn.textContent = '▶'; }
+      else{
+        buttons.forEach(function(b){ b.textContent = '▶'; });
+        audioEl.src = src;
+        audioEl.play().catch(function(){});
+        btn.textContent = '❚❚';
+      }
+    });
+  });
+  audioEl.addEventListener('ended', function(){ buttons.forEach(function(b){ b.textContent = '▶'; }); });
+}
+
+var modal = document.querySelector('#galleryModal');
+if(modal){
+  var modalImg = modal.querySelector('.gallery-modal-img');
+  var closeBtn = modal.querySelector('.gallery-modal-close');
+  function closeModal(){ modal.classList.remove('open'); modalImg.src = ''; }
+  document.querySelectorAll('.gallery-frame').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      modalImg.src = btn.dataset.full;
+      var innerImg = btn.querySelector('img');
+      modalImg.alt = innerImg ? innerImg.alt : '';
+      modal.classList.add('open');
+    });
+  });
+  if(closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', function(e){ if(e.target === modal) closeModal(); });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+}
+`;
+
+function renderPreview(){
+  const bodyHtml = buildCharacterHTML().replace(/^[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*$/, '');
+  const doc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${PREVIEW_CSS}</style></head><body>${bodyHtml}<script>${PREVIEW_SCRIPT}<\/script></body></html>`;
+  const frame = document.getElementById('previewFrame');
+  let scrollY = 0;
+  try{ scrollY = frame.contentWindow ? frame.contentWindow.scrollY : 0; }catch(e){}
+  frame.onload = () => { try{ frame.contentWindow.scrollTo(0, scrollY); }catch(e){} };
+  frame.srcdoc = doc;
+}
+
+function copyHTML(){
+  const html = buildCharacterHTML();
+  const status = document.getElementById('copyStatus');
+  navigator.clipboard.writeText(html).then(() => {
+    status.textContent = '복사됨!';
+    setTimeout(() => status.textContent = '', 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = html;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    status.textContent = '복사됨!';
+    setTimeout(() => status.textContent = '', 2000);
+  });
+}
+
+// ---------- JSON 저장 / 불러오기 ----------
+function exportJSON(){
+  const data = JSON.stringify({ meta, infoRows, voiceTracks, sections, galleryImages }, null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const filename = (meta.name && meta.name.trim()) ? meta.name.trim() : '무제 캐릭터';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.replace(/[\\/:*?"<>|]/g, '_') + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function triggerImport(){ document.getElementById('importFileInput').click(); }
+
+function importJSON(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data || typeof data !== 'object') throw new Error('invalid json');
+
+      meta = Object.assign({ name:'', realm:'혼돈', portraitSrc:'', stampText:'', teaser:'' }, data.meta || {});
+      infoRows = Array.isArray(data.infoRows) ? data.infoRows : [];
+      voiceTracks = Array.isArray(data.voiceTracks) ? data.voiceTracks : [];
+      sections = Array.isArray(data.sections) ? data.sections : [];
+      galleryImages = Array.isArray(data.galleryImages) ? data.galleryImages : [];
+
+      let maxNum = 0;
+      const scan = (obj) => {
+        if(obj && typeof obj === 'object'){
+          if(typeof obj.id === 'string'){
+            const m = obj.id.match(/^c(\d+)$/);
+            if(m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+          }
+          Object.values(obj).forEach(v => {
+            if(Array.isArray(v)) v.forEach(scan);
+            else if(v && typeof v === 'object') scan(v);
+          });
+        }
+      };
+      infoRows.forEach(scan); voiceTracks.forEach(scan); sections.forEach(scan); galleryImages.forEach(scan);
+      uid = maxNum + 1;
+
+      document.getElementById('meta-name').value = meta.name || '';
+      document.getElementById('meta-realm').value = meta.realm || '혼돈';
+      document.getElementById('meta-portraitSrc').value = meta.portraitSrc || '';
+      document.getElementById('meta-stampText').value = meta.stampText || '';
+      document.getElementById('txt_teaser').value = meta.teaser || '';
+
+      renderEditor();
+      renderPreview();
+    }catch(err){
+      console.error('importJSON error:', err);
+      alert('JSON 파일을 읽는 중 오류가 발생했습니다. 올바른 형식의 파일인지 확인해주세요.');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// init
+addInfoRow(); addInfoRow(); addInfoRow(); addInfoRow(); addInfoRow(); addInfoRow(); addInfoRow();
+infoRows[0].label='이름'; infoRows[1].label='생일'; infoRows[2].label='성별';
+infoRows[3].label='신장'; infoRows[4].label='체중'; infoRows[5].label='영성지수'; infoRows[6].label='스토리';
+addVoiceTrack();
+addSection();
+renderEditor();
+renderPreview();
+</script>
+</body>
+</html>
